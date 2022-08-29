@@ -37,25 +37,13 @@ class Gohan:
 
     def _login(self, login:str, senha:str) -> None:
         if not login or not senha: return
-        self._me = Client(login, senha)
         self._label("ig do sorteio: ", 6, 1, width=10)
         ig_sorteio = self._entry(6, 2)
 
-        self._label(row=7, colspan=5, width=40)
-        self._button(lambda: self._run(ig_sorteio.get()), "buscar", 8)
-        self._label(row=9, colspan=5, width=40)
-
-    def _run(self, ig_sorteio:str) -> None:
-        if not ig_sorteio: return
-        self._qnt = self._spinbox("amigos/comentário:", 10)
-        self._ncomments = self._spinbox("n° comentários:", 11)
-        self._label(row=12, colspan=5, width=40)
-        
-        seguindo = self._me.user_following(self._me.authenticated_user_id, self._me.generate_uuid())
-        ig_sorteio = list(filter(lambda u: ig_sorteio == u["username"], seguindo["users"]))[0]["pk"]
-
+        self._me = Client(login, senha)
+        self._seguindo = self._me.user_following(self._me.authenticated_user_id, self._me.generate_uuid())
         me_segue, meus_seguidores = self._me.user_followers(self._me.authenticated_user_id, self._me.generate_uuid()), []
-        seguindo = list(map(lambda u: u["username"], seguindo["users"]))
+        seguindo = list(map(lambda u: u["username"], self._seguindo["users"]))
         while True:
             meus_seguidores.append(me_segue)
             if "next_max_id" not in me_segue.keys(): break
@@ -63,7 +51,19 @@ class Gohan:
 
         meus_seguidores = [user for seguidores in list(map(lambda s: s["users"], meus_seguidores)) for user in seguidores]
         meus_seguidores = list(map(lambda u: u["username"], meus_seguidores))
-        em_comum = list(set(seguindo).intersection(meus_seguidores))
+        self._em_comum = list(set(seguindo).intersection(meus_seguidores))
+
+        self._label(row=7, colspan=5, width=40)
+        self._button(lambda: self._run(ig_sorteio.get()), "buscar", 8)
+        self._label(row=9, colspan=5, width=40)
+
+    def _run(self, ig_sorteio:str) -> None:
+        if not ig_sorteio: return
+        ig_sorteio = list(filter(lambda u: ig_sorteio == u["username"], self._seguindo["users"]))[0]["pk"]
+
+        self._qnt = self._spinbox("amigos/comentário:", 10)
+        self._ncomments = self._spinbox("n° comentários:", 11)
+        self._label(row=12, colspan=5, width=40)
 
         if not isdir("imgs"): mkdir("imgs")
         for file in glob("imgs/*.png"): remove(file)
@@ -77,7 +77,7 @@ class Gohan:
             if 15 < i: break
             files[i] = ImageTk.PhotoImage(Image.open(f"imgs/{img}").resize((75, 75)))
 
-            def func(post_id=img[5:-4], users=em_comum):
+            def func(post_id=img[5:-4], users=self._em_comum):
                 return self._comentar(post_id, users)
             c = i % 4
             r = int((i - c) / 4)
