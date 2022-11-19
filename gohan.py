@@ -35,23 +35,25 @@ class Gohan:
         self._label(row=5, colspan=5, width=40)
         self._window.mainloop()
 
+    def _handle_follows(self, follow_function):
+        follows, follows_aux = follow_function(self._me.authenticated_user_id, self._me.generate_uuid()), []
+        while True:
+            follows_aux.append(follows)
+            if "next_max_id" not in follows.keys(): break
+            follows = follow_function(self._me.authenticated_user_id, self._me.generate_uuid(), max_id=follows["next_max_id"])
+
+        follows_aux = [user for seguidores in list(map(lambda s: s["users"], follows_aux)) for user in seguidores]
+        return list(map(lambda u: u["pk"], follows_aux))
+
     def _login(self, login:str, senha:str) -> None:
         if not login or not senha: return
         self._label("ig do sorteio: ", 6, 1, width=10)
         ig_sorteio = self._entry(6, 2)
 
         self._me = Client(login, senha)
-        self._seguindo = self._me.user_following(self._me.authenticated_user_id, self._me.generate_uuid())
-        me_segue, meus_seguidores = self._me.user_followers(self._me.authenticated_user_id, self._me.generate_uuid()), []
-        seguindo = list(map(lambda u: u["username"], self._seguindo["users"]))
-        while True:
-            meus_seguidores.append(me_segue)
-            if "next_max_id" not in me_segue.keys(): break
-            me_segue = self._me.user_followers(self._me.authenticated_user_id, self._me.generate_uuid(), max_id=me_segue["next_max_id"])
-
-        meus_seguidores = [user for seguidores in list(map(lambda s: s["users"], meus_seguidores)) for user in seguidores]
-        meus_seguidores = list(map(lambda u: u["username"], meus_seguidores))
-        self._em_comum = list(set(seguindo).intersection(meus_seguidores))
+        estou_seguindo = self._handle_follows(self._me.user_following)
+        meus_seguidores = self._handle_follows(self._me.user_followers)
+        self._em_comum = list(set(estou_seguindo).intersection(meus_seguidores))
 
         self._label(row=7, colspan=5, width=40)
         self._button(lambda: self._run(ig_sorteio.get()), "buscar", 8)
